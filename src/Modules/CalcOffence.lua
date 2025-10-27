@@ -735,6 +735,62 @@ function calcs.offence(env, actor, activeSkill)
 			end
 		end
 	end
+	if skillModList:Flag(nil, "DotMultiplierIsCritMultiplier") then
+		-- Perfect Agony - Further info: On enemy crit multiplier effects also apply for Perfect Agony: https://www.pathofexile.com/forum/view-thread/3532389#13
+		-- NOTE: There are currently only `+x% to ...`, i.e. `"BASE"` mods, if we ever get `INC`, `MORE`, or `OVERRIDE` mods, this section will need to be adjusted
+		
+		local ailmentKeywordFlags = bor(KeywordFlag.Ailment, KeywordFlag.Bleed, KeywordFlag.Poison, KeywordFlag.Ignite)
+
+		-- Disable existing DotMultiplier mods for ailments (but leave them for non-ailments)
+		local nonCritDotMultiMods = skillModList:Tabulate("BASE", { flags = ModFlag.Ailment, keywordFlags = ailmentKeywordFlags }, "DotMultiplier")
+		local critDotMultiMods = skillModList:Tabulate("BASE", { skillCond = { CriticalStrike = true }, flags = ModFlag.Ailment, keywordFlags = ailmentKeywordFlags }, "DotMultiplier")
+		
+		for _, type in ipairs(dmgTypeList) do
+			-- dmgType specific mods like `"ChaosDotMultiplier"`
+			for _, value in ipairs(skillModList:Tabulate("BASE", { flags = ModFlag.Ailment, keywordFlags = ailmentKeywordFlags }, type .. "DotMultiplier")) do
+				t_insert(nonCritDotMultiMods, value)
+			end
+			for _, value in ipairs(skillModList:Tabulate("BASE", { skillCond = { CriticalStrike = true }, flags = ModFlag.Ailment, keywordFlags = ailmentKeywordFlags }, type .. "DotMultiplier")) do
+				t_insert(critDotMultiMods, value)
+			end
+		end
+
+		local dotMultiMods = tableConcat(nonCritDotMultiMods, critDotMultiMods)
+
+		for _, value in ipairs(dotMultiMods) do
+			local mod = value.mod
+			if (band(mod.flags, ModFlag.Ailment) == ModFlag.Ailment) or (band(mod.keywordFlags, ailmentKeywordFlags) ~= 0) then
+				-- Disable ailment-related mods
+				if not modLib.hasTag(mod, { type = "Condition", var = "HavePerfectAgony" }) then
+					t_insert(mod, { type = "Condition", var = "HavePerfectAgony", neg = true })
+				end
+			else
+				-- Ensure generic dot multi only applies to non-ailments
+				if not modLib.hasTag(mod, { type = "ModFlagNot", modFlags = ModFlag.Ailment }) then
+					t_insert(mod, { type = "ModFlagNot", modFlags = ModFlag.Ailment })
+				end
+			end
+		end
+
+		-- Process CritMultiplier mods
+		local critMultiMods
+		local multiOverride = skillModList:Override(skillCfg, "CritMultiplier")
+		if multiOverride then
+			critMultiMods = skillModList:Tabulate("OVERRIDE", skillCfg, "CritMultiplier")
+		else
+			critMultiMods = tableConcat(skillModList:Tabulate("BASE", skillCfg, "CritMultiplier"), enemyDB:Tabulate("BASE", skillCfg, "SelfCritMultiplier"))
+		end
+		-- Convert to dot multi for ailments
+		for i, value in ipairs(critMultiMods) do
+			local newDotMod = copyTable(value.mod, true)
+			newDotMod.name = "DotMultiplier"
+			newDotMod.flags = bor(newDotMod.flags, ModFlag.Ailment)
+			t_insert(newDotMod, { type = "Condition", var = "HavePerfectAgony" })
+			if not skillModList:ReplaceModInternal(newDotMod) then
+				skillModList:AddMod(newDotMod)
+			end
+		end
+	end
 	if skillData.arrowSpeedAppliesToAreaOfEffect then
 		-- Arrow Speed conversion for Galvanic Arrow
 		for i, value in ipairs(skillModList:Tabulate("INC", { flags = ModFlag.Bow }, "ProjectileSpeed")) do
@@ -3730,9 +3786,9 @@ function calcs.offence(env, actor, activeSkill)
 		globalOutput, globalBreakdown = output, breakdown
 		local source, output, cfg, breakdown = pass.source, pass.output, pass.cfg, pass.breakdown
 
-		do -- Perfect Agony
+		do -- Perfect Agony (Legacy)
 			local handCondition = pass.label == "Off Hand" and { type = "Condition", var = "OffHandAttack" } or pass.label == "Main Hand" and { type = "Condition", var = "MainHandAttack" } or nil
-			-- Note: This section is the legacy implementation of 'Perfect Agony'
+			-- Note: This section is the old implementation of 'Perfect Agony' with the wording: "Modifiers to Critical Strike Multiplier to also apply to Damage over Time Multiplier for Ailments from Critical Strikes at 50% of their Value"
 			if skillModList:Sum("BASE", nil, "CritMultiplierAppliesToDegen") > 0 then
 				for i, value in ipairs(skillModList:Tabulate("BASE", cfg, "CritMultiplier")) do
 					local mod = value.mod
@@ -3740,15 +3796,6 @@ function calcs.offence(env, actor, activeSkill)
 						skillModList:NewMod("DotMultiplier", "BASE", m_floor(mod.value / 2), mod.source, ModFlag.Ailment, { type = "Condition", var = "CriticalStrike" }, handCondition, unpack(mod))
 					end
 				end
-			end
-
-			if skillModList:Flag(nil, "DotMultiplierIsCritMultiplier") then
-				-- On enemy crit multiplier effects also apply for Perfect Agony: https://www.pathofexile.com/forum/view-thread/3532389#13
-				local multiOverride = skillModList:Override(cfg, "CritMultiplier")
-				if multiOverride then
-					multiOverride = multiOverride - 100
-				end
-				skillModList:NewMod("DotMultiplier", "OVERRIDE", (multiOverride or skillModList:Sum("BASE", cfg, "CritMultiplier")) + enemyDB:Sum("BASE", cfg, "SelfCritMultiplier"), "Perfect Agony", ModFlag.Ailment, { type = "Condition", var = "CriticalStrike" }, handCondition )
 			end
 		end
 
