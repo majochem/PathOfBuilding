@@ -477,6 +477,8 @@ function CalcBreakdownClass:AddModSection(sectionData, modList)
 					desc = "Limited to "..(tag.limitVar and self:FormatModName(tag.limitVar) or self:FormatModBase(row.mod, tag.limit))
 				elseif tag.type == "MonsterTag" then
 					desc = "Monster Tag: "..(tag.monsterTagList and table.concat(tag.monsterTagList, "/") or tag.monsterTag)
+				elseif tag.type == "ModFlagNot" then
+					desc = tag.modFlags and "Not: " .. (modLib.formatFlags(tag.modFlags, ModFlag)) or ""
 				else
 					desc = self:FormatModName(tag.type)
 				end

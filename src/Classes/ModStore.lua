@@ -785,6 +785,10 @@ function ModStoreClass:EvalMod(mod, cfg, globalLimits)
 			if band(cfg.flags, tag.modFlags) == 0 then
 				return
 			end
+		elseif tag.type == "ModFlagNot" then
+			if cfg and cfg.flags and (band(cfg.flags, tag.modFlags) ~= 0) then
+				return
+			end
 		elseif tag.type == "KeywordFlagAnd" then
 			if not cfg or not cfg.keywordFlags then
 				return

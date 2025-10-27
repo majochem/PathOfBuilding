@@ -65,5 +65,7 @@ Often a mod will only apply under certain conditions, apply multiple times based
     * ramp: Numbers to multiply the mod by at different distances.  e.g. `ramp = {{35,0},{70,1}}` means the mod does nothing at 35 units, but has its full value at 70 units.
 * ModFlagOr: Used when you only need one ModFlag to match, e.g. `["with axes or swords"] = { flags = ModFlag.Hit, tag = { type = "ModFlagOr", modFlags = bor(ModFlag.Axe, ModFlag.Sword) } },` needs `Hit`, but can use either of the other two flags
     * modFlags: Use `bor` as if you were adding ModFlags normally
+* ModFlagNot: Used when you need to exclude specific ModFlags, e.g. `["for non-ailment damage over time"] = tag = { type = "ModFlagNot", modFlags = ModFlag.Ailment },` will exclude the mod from applying from anything with `ModFlag.Ailment`.
+    * modFlags: Use a single `ModFlag["key"]` or `bor(ModFlag["key1"], ModFlag["key2"])` if you want to exclude multiple flags
 * KeywordFlagAnd: Used when you need all of the KeywordFlags to match
     * keywordFlags: Use `bor` as if you were adding KeywordFlags normally
