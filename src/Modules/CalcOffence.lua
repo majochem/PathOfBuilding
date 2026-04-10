@@ -2042,12 +2042,24 @@ function calcs.offence(env, actor, activeSkill)
 				local minInstance = m_min(output.MainHand[stat], output.OffHand[stat])
 				local stackName = stat:gsub("DPS","") .. "Stacks"
 				local maxInstanceStacks = m_min(1, (globalOutput[stackName] or 1) / (globalOutput[stackName.."Max"] or 1))
-				output[stat] = maxInstance * maxInstanceStacks + minInstance * (1 - maxInstanceStacks)
+				if skillFlags.bothWeaponAttack and skillData.doubleHitsWhenDualWielding then
+					output[stat] = output.MainHand[stat] + output.OffHand[stat]
+				else
+					output[stat] = maxInstance * maxInstanceStacks + minInstance * (1 - maxInstanceStacks)
+				end
 				if breakdown then
 					if not breakdown[stat] then breakdown[stat] = { } end
-					t_insert(breakdown[stat], s_format(""))
-					t_insert(breakdown[stat], s_format("%.2f%% of ailment stacks use maximum damage", maxInstanceStacks * 100))
-					t_insert(breakdown[stat], s_format("Max Damage comes from %s", output.MainHand[stat] >= output.OffHand[stat] and "Main Hand" or "Off Hand"))
+					if skillFlags.bothWeaponAttack and skillData.doubleHitsWhenDualWielding then
+						t_insert(breakdown[stat], s_format(""))
+						t_insert(breakdown[stat], s_format("Damage from Main Hand and Off Hand is combined"))
+						t_insert(breakdown[stat], s_format("MH: %.1f", output.MainHand[stat]))
+						t_insert(breakdown[stat], s_format("OH: %.1f", output.OffHand[stat]))
+						t_insert(breakdown[stat], "")
+						t_insert(breakdown[stat], "Total:")
+					else
+						t_insert(breakdown[stat], s_format(""))
+						t_insert(breakdown[stat], s_format("%.2f%% of ailment stacks use maximum damage", maxInstanceStacks * 100))
+						t_insert(breakdown[stat], s_format("Max Damage comes from %s", output.MainHand[stat] >= output.OffHand[stat] and "Main Hand" or "Off Hand"))
 						t_insert(breakdown[stat], s_format("= %.1f", maxInstance * maxInstanceStacks))
 						if maxInstanceStacks < 1 then
 							t_insert(breakdown[stat], s_format("%.2f%% of ailment stacks use non-maximum damage", (1-maxInstanceStacks) * 100))
@@ -2056,7 +2068,8 @@ function calcs.offence(env, actor, activeSkill)
 						t_insert(breakdown[stat], "")
 						t_insert(breakdown[stat], "Total:")
 						if maxInstanceStacks < 1 then
-						t_insert(breakdown[stat], s_format("%.1f + %.1f", maxInstance * maxInstanceStacks, minInstance * (1 - maxInstanceStacks)))
+							t_insert(breakdown[stat], s_format("%.1f + %.1f", maxInstance * maxInstanceStacks, minInstance * (1 - maxInstanceStacks)))
+						end
 					end
 					t_insert(breakdown[stat], s_format("= %.1f", output[stat]))
 				end
