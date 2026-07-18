@@ -4057,6 +4057,11 @@ function calcs.offence(env, actor, activeSkill)
 		end
 
 		-- Calculate the inflict chance and base damage of a secondary effect (bleed/poison/ignite/shock/freeze)
+		---@param type string type of damaging ailment e.g. `"Bleed"`, `"Poison"`, `"Ignite"`
+		---@param sourceCritChance number % range from `0` to `100` (use `100` to simulate guaranteed crit)
+		---@param sourceHitDmg number average non-crit hit damage
+		---@param sourceCritDmg number average crit hit damage
+		---@param hideFromBreakdown boolean if true, will not insert into breakdown (use if calculating temporary values)
 		local function calcAilmentDamage(type, sourceCritChance, sourceHitDmg, sourceCritDmg, hideFromBreakdown)
 			local chanceOnHit, chanceOnCrit = output[type.."ChanceOnHit"], output[type.."ChanceOnCrit"]
 			-- Use sourceCritChance to factor in chance a critical ailment is present
